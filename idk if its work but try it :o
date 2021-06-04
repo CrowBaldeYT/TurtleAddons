@@ -1,0 +1,63 @@
+<?php
+
+namespace Addon;
+
+use pocketmine\event\server\DataPacketReceiveEvent;
+use pocketmine\network\mcpe\protocol\LoginPacket;
+use pocketmine\Player;
+use pocketmine\math\Vector3;
+use pocketmine\event\player\PlayerEvent;
+use pocketmine\event\Cancellable;
+
+class AntiCPS implements \pocketmine\event\Listener{
+
+    private $cps;
+    private $constant;
+    private $plugin;
+    
+    public function __construct(){
+        $this->plugin = $this->plugin = Main::getInstance();
+        
+        $this->cps = [];
+        $this->constant = [];
+    }
+    
+    public function onEnable(){
+      $this->getServer()->getPluginManager()->registerEvents($this, $this);
+    }
+
+    public function onClick(PlayerClickEvent $ev){
+        $player = $ev->getPlayer();
+
+        if (!isset($this->cps[$player->getName()])) {
+            $this->cps[$player->getName()] = [];
+        }
+
+        $time = microtime(true);
+
+        array_push($this->cps[$player->getName()], microtime(true));
+
+        $cps = count(array_filter($this->cps[$player->getName()],  function (float $t) use ($time) : bool {
+            return ($time - $t) <= 1;
+        }));
+
+        $allowed = 20 + ($player->getPing() * 0.009);
+        
+        if ($cps >= 100) {
+            $player->kick("Dont use AutoClicker.");
+            return;
+        }
+
+        if ($cps >= $allowed) {
+            $player->kick("Dont use AutoClicker.");
+            return;
+        }
+    }
+}
+
+
+class PlayerClickEvent extends PlayerEvent implements Cancellable {
+    public function __construct(Player $player) {
+        $this->player = $player;
+    }
+}
